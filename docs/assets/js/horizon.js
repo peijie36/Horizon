@@ -61,10 +61,10 @@
     // Insert at top of body
     document.body.insertBefore(toggle, document.body.firstChild);
 
-    // Read saved preference, default to zh
+    // Read saved preference, default to en
     var saved = null;
     try { saved = localStorage.getItem('horizon-lang'); } catch (e) { /* noop */ }
-    var currentLang = saved === 'en' ? 'en' : 'zh';
+    var currentLang = saved === 'zh' ? 'zh' : 'en';
 
     function updateButtons(lang) {
       if (lang === 'en') {
