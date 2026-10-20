@@ -1,0 +1,34 @@
+{
+  "id": "career-advice",
+  "name": "CS Industry Watch",
+  "match": "match.md",
+  "analysis": "analysis.md",
+  "content": {
+    "analysis_max_chars": 4000,
+    "enrichment_max_chars": 8000,
+    "sampling": "prefix"
+  },
+  "enrichment": {
+    "prompt": "enrichment.md",
+    "blocks": [
+      {
+        "id": "summary",
+        "type": "section",
+        "tools": [],
+        "primary": true
+      },
+      {
+        "id": "industry_context",
+        "type": "section",
+        "tools": [],
+        "optional": true
+      },
+      {
+        "id": "community_discussion",
+        "type": "section",
+        "tools": [],
+        "optional": true
+      }
+    ]
+  }
+}

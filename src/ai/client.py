@@ -191,9 +191,9 @@ class OpenAIClient(AIClient):
     # Providers that need temperature clamped to (0, 1]
     _TEMP_CLAMP = {"minimax"}
 
-    # Newer reasoning-series / GPT-5 family models reject legacy `max_tokens`
+    # Newer reasoning-series / GPT-5 and GPT-6 models reject legacy `max_tokens`
     # and require `max_completion_tokens` instead.
-    _MODELS_REQUIRING_MAX_COMPLETION_TOKENS = ("o1", "o3", "o4", "gpt-5")
+    _MODELS_REQUIRING_MAX_COMPLETION_TOKENS = ("o1", "o3", "o4", "gpt-5", "gpt-6")
 
     def __init__(self, config: AIConfig):
         """Initialize OpenAI-compatible client.
@@ -264,38 +264,26 @@ class OpenAIClient(AIClient):
         if self.provider in self._TEMP_CLAMP and temperature <= 0:
             temperature = 0.01
 
-        try:
-            response = await self._do_request(
-                system=system,
-                user=user,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                include_temperature=self._supports_temperature,
-                use_max_completion_tokens=self._use_max_completion_tokens,
-            )
-        except Exception as exc:
-            if self._supports_temperature and self._is_temperature_unsupported(str(exc)):
-                self._supports_temperature = False
-                response = await self._do_request(
-                    system=system,
-                    user=user,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    include_temperature=False,
-                    use_max_completion_tokens=self._use_max_completion_tokens,
-                )
-            elif not self._use_max_completion_tokens and self._is_max_tokens_unsupported(str(exc)):
-                self._use_max_completion_tokens = True
+        # Each capability can change once, so at most two compatibility retries
+        # are possible even when the endpoint rejects both parameters in turn.
+        while True:
+            try:
                 response = await self._do_request(
                     system=system,
                     user=user,
                     temperature=temperature,
                     max_tokens=max_tokens,
                     include_temperature=self._supports_temperature,
-                    use_max_completion_tokens=True,
+                    use_max_completion_tokens=self._use_max_completion_tokens,
                 )
-            else:
-                raise
+                break
+            except Exception as exc:
+                if self._supports_temperature and self._is_temperature_unsupported(str(exc)):
+                    self._supports_temperature = False
+                elif not self._use_max_completion_tokens and self._is_max_tokens_unsupported(str(exc)):
+                    self._use_max_completion_tokens = True
+                else:
+                    raise
         usage = getattr(response, "usage", None)
         if usage is not None:
             record_usage(

@@ -15,3 +15,15 @@ Evaluate whether a financial news item gives readers timely, credible, and mater
 Consider the magnitude and breadth of the event, source quality, timeliness, affected groups, and whether the item provides concrete figures with meaningful baselines. Distinguish reported facts from forecasts and opinions. Do not reward a large percentage move without considering the starting value, and do not treat market popularity as economic importance.
 
 Use three to five specific topic tags.
+
+# Public-stock priorities
+
+Give priority to concrete public-company earnings, guidance, filings, significant
+acquisitions, buybacks, dividends, and material market catalysts. Company-specific
+news can be useful without being a systemic economic event. Judge the magnitude
+and comparison baseline, not just the company's popularity.
+
+Private-company fundraising, private valuations, and speculative IPO plans should
+score at most 4 unless the supplied evidence establishes a direct, material effect
+on a listed company or public markets. A large funding figure alone is not enough.
+Do not substitute investment recommendations or speculative price targets for news.

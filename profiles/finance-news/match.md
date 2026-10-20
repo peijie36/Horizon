@@ -5,3 +5,10 @@ Use this profile when an item's primary value is understanding money, markets, c
 Typical items include macroeconomic data, interest rates, inflation, employment, fiscal policy, stocks, bonds, currencies, commodities, company earnings, financing, mergers and acquisitions, valuations, financial regulation, and industry policy with clear economic consequences.
 
 For technology companies, route earnings, financing, valuation, acquisitions, and material business changes here. Route product releases, research results, software updates, security incidents, and engineering developments to the technology news profile. Do not route routine price movements, unsupported market rumors, promotional investment content, or generic personal-finance advice here.
+
+# Reader priorities
+
+Prioritize publicly traded companies, earnings, guidance, filings, acquisitions,
+buybacks, dividends, and material market developments. Private-company fundraising
+or speculative IPO coverage is lower priority unless the supplied evidence shows
+a direct, material consequence for listed companies or public markets.
