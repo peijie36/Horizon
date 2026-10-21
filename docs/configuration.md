@@ -406,6 +406,11 @@ for validation and fallback rules.
 }
 ```
 
+RSS entries can also set a positive `fetch_limit`. Horizon takes the newest
+stories within the collection window up to that limit, before fetching full
+articles or sending them for AI analysis. Omitting it preserves all fresh feed
+entries in their original order.
+
 ### Reddit
 
 Reddit scraping is free and does not require API keys. Subreddit posts and comments prefer `old.reddit.com`; JSON and RSS endpoints are used as fallbacks when needed.

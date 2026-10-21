@@ -73,6 +73,24 @@
         "category": "technology",
         "content_extractor": null,
         "profile": "tech-news"
+      },
+      {
+        "name": "Financial Times Markets",
+        "url": "https://www.ft.com/markets?format=rss",
+        "enabled": true,
+        "fetch_limit": 12,
+        "category": "finance",
+        "content_extractor": null,
+        "profile": "finance-news"
+      },
+      {
+        "name": "CBS Sports NBA",
+        "url": "https://www.cbssports.com/rss/headlines/nba/",
+        "enabled": true,
+        "fetch_limit": 12,
+        "category": "nba",
+        "content_extractor": null,
+        "profile": "sports-news"
       }
     ],
     "reddit": {

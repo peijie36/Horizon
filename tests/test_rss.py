@@ -107,3 +107,54 @@ def test_unknown_extractor_name_ignored() -> None:
 
     assert len(items) == 1
     assert items[0].content == "Short summary from feed."
+
+
+_MULTI_FEED = _FEED.replace("</channel>", """
+  <item>
+    <guid>entry-2</guid><title>Item 2</title><link>https://example.com/item-2</link>
+    <pubDate>Fri, 24 Apr 2026 15:00:00 GMT</pubDate><description>Newer story.</description>
+  </item>
+  <item>
+    <guid>entry-old</guid><title>Old</title><link>https://example.com/old</link>
+    <pubDate>Thu, 23 Apr 2026 23:00:00 GMT</pubDate><description>Outside the window.</description>
+  </item>
+</channel>""")
+
+
+def test_fetch_limit_keeps_newest_fresh_items_before_article_extraction() -> None:
+    client = _make_feed_client(_MULTI_FEED)
+    extractor = AsyncMock()
+    extractor.extract.return_value = "Full article text."
+    source = RSSSourceConfig(
+        name="Test", url="https://example.com/feed.xml", fetch_limit=1,
+        category="finance", profile="finance-news", content_extractor="full",
+    )
+    scraper = RSSScraper([source], client, extractors=_make_registry("full", extractor))
+
+    items = asyncio.run(scraper.fetch(_SINCE)).items
+
+    assert len(items) == 1
+    assert items[0].title == "Item 2"
+    assert items[0].metadata["category"] == "finance"
+    assert items[0].profile == "finance-news"
+    extractor.extract.assert_awaited_once_with("https://example.com/item-2", client)
+
+
+def test_no_fetch_limit_preserves_feed_order_and_excludes_old_items() -> None:
+    source = RSSSourceConfig(name="Test", url="https://example.com/feed.xml")
+    scraper = RSSScraper([source], _make_feed_client(_MULTI_FEED))
+
+    items = asyncio.run(scraper.fetch(_SINCE)).items
+
+    assert [item.title for item in items] == ["Item 1", "Item 2"]
+
+
+def test_fetch_limit_must_be_positive() -> None:
+    from pydantic import ValidationError
+
+    for value in (0, -1):
+        try:
+            RSSSourceConfig(name="Test", url="https://example.com/feed.xml", fetch_limit=value)
+        except ValidationError:
+            continue
+        raise AssertionError(f"Invalid RSS fetch limit accepted: {value}")

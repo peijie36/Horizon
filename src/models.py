@@ -257,6 +257,7 @@ class RSSSourceConfig(BaseModel):
     name: str
     url: HttpUrl
     enabled: bool = True
+    fetch_limit: Optional[int] = Field(default=None, gt=0)
     category: Optional[str] = None
     content_extractor: Optional[str] = None
     profile: ProfileRoute = None
