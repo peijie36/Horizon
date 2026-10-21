@@ -102,6 +102,7 @@ class FilteringPipelineResult:
     topic_dedup_removed: int
     balanced_digest: BalancedDigestResult
     eligible_count: Optional[int] = None
+    reserve_count: int = 0
 
 
 @dataclass
@@ -833,15 +834,107 @@ class HorizonOrchestrator:
             ),
             reverse=True,
         )
-        balanced = self.apply_balanced_digest(eligible, log=log)
+        reserve_considered = 0
+        reserve_duplicates = 0
+        if self.config.digest.fill_from_reserve:
+            eligible, reserve_considered, reserve_duplicates = await self._fill_digest_reserves(
+                eligible, items, threshold=threshold, topic_dedup=topic_dedup, log=log
+            )
+        balanced = self.apply_balanced_digest(eligible, threshold=threshold, log=log)
+        reserve_count = sum(
+            not self.passes_profile_filter(item, threshold) for item in balanced.items
+        )
+        if log and reserve_count:
+            self.console.print(
+                f"   Filled {reserve_count} category slots from below-threshold reserves\n"
+            )
         return FilteringPipelineResult(
             items=balanced.items,
             threshold_count=initial.threshold_count,
-            topic_dedup_count=initial.topic_dedup_count,
-            topic_dedup_removed=initial.topic_dedup_removed,
+            topic_dedup_count=(
+                initial.topic_dedup_count + reserve_considered - reserve_duplicates
+            ),
+            topic_dedup_removed=initial.topic_dedup_removed + reserve_duplicates,
             balanced_digest=balanced,
             eligible_count=len(eligible),
+            reserve_count=reserve_count,
         )
+
+    async def _fill_digest_reserves(
+        self,
+        eligible: List[ContentItem],
+        items: List[ContentItem],
+        *,
+        threshold: Optional[float],
+        topic_dedup: bool,
+        log: bool,
+    ) -> tuple[List[ContentItem], int, int]:
+        """Try scored reserves only for vacant, finite category slots.
+
+        Each batch contains just enough reserves to fill the current vacancies.
+        Deduplicate them against eligible items in the same profile before trying
+        the next batch. Unused reserves receive no additional AI processing.
+        """
+        digest = self.config.digest
+        category_limits: Dict[str, Optional[int]] = {}
+        for group in digest.category_groups.values():
+            for category in group.categories:
+                category_limits.setdefault(category, group.limit)
+        remaining = [
+            item for item in items
+            if item.processing
+            and item.processing.analysis
+            and item.processing.analysis.score is not None
+            and not self.passes_profile_filter(item, threshold)
+            and category_limits.get(
+                item.metadata.get("category")
+                if isinstance(item.metadata.get("category"), str) else None,
+                digest.default_group_limit,
+            ) is not None
+        ]
+        considered = 0
+        duplicates = 0
+        while remaining:
+            # Apply the quotas locally first; only the chosen reserves need dedup.
+            selection = self.apply_balanced_digest(
+                eligible + remaining, threshold=threshold, log=False
+            )
+            remaining_ids = {item.id for item in remaining}
+            batch = [item for item in selection.items if item.id in remaining_ids]
+            if not batch:
+                break
+            batch_ids = {item.id for item in batch}
+            remaining = [item for item in remaining if item.id not in batch_ids]
+            considered += len(batch)
+
+            if not topic_dedup:
+                eligible = eligible + batch
+                continue
+
+            profile_batches: Dict[str, List[ContentItem]] = defaultdict(list)
+            for item in batch:
+                profile_batches[item.processing.classification.profile].append(item)
+            for profile_id, profile_batch in profile_batches.items():
+                settings = self.config.processing.profile_settings.get(profile_id)
+                if settings is not None and not settings.topic_dedup:
+                    eligible.extend(profile_batch)
+                    continue
+                context = [
+                    item for item in eligible
+                    if item.processing.classification.profile == profile_id
+                ]
+                combined = sorted(
+                    context + profile_batch,
+                    key=lambda item: item.processing.analysis.score,
+                    reverse=True,
+                )
+                deduped = await self.merge_topic_duplicates(combined, log=log)
+                duplicates += len(combined) - len(deduped)
+                eligible = [
+                    item for item in eligible
+                    if item.processing.classification.profile != profile_id
+                ] + deduped
+        return eligible, considered, duplicates
 
     def passes_profile_filter(
         self,
@@ -850,6 +943,9 @@ class HorizonOrchestrator:
     ) -> bool:
         if not item.processing or not item.processing.analysis:
             return False
+        score = item.processing.analysis.score
+        if score is None:
+            return False
         profile_id = item.processing.classification.profile
         settings = self.config.processing.profile_settings.get(profile_id)
         effective_threshold = threshold
@@ -857,13 +953,13 @@ class HorizonOrchestrator:
             effective_threshold = settings.threshold
         if effective_threshold is None:
             return True
-        score = item.processing.analysis.score
-        return score is not None and score >= effective_threshold
+        return score >= effective_threshold
 
     def apply_balanced_digest(
         self,
         items: List[ContentItem],
         *,
+        threshold: Optional[float] = None,
         log: bool = True,
     ) -> BalancedDigestResult:
         """Apply configured category quotas and the final item cap.
@@ -882,6 +978,8 @@ class HorizonOrchestrator:
         sorted_items = sorted(
             items,
             key=lambda item: (
+                self.passes_profile_filter(item, threshold)
+                if digest.fill_from_reserve else True,
                 item.processing.analysis.score
                 if item.processing and item.processing.analysis and item.processing.analysis.score is not None
                 else -1

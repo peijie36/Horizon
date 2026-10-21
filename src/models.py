@@ -551,6 +551,7 @@ class DigestConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     max_items: Optional[int] = Field(default=None, gt=0)
+    fill_from_reserve: bool = False
     category_groups: Dict[str, CategoryGroupConfig] = Field(default_factory=dict)
     default_group: str = "other"
     default_group_limit: Optional[int] = Field(default=None, gt=0)

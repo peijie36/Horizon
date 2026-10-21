@@ -625,6 +625,11 @@ digest limits:
 ```
 
 - `max_items`: Optional final cap after all group limits are applied
+- `fill_from_reserve`: Defaults to `false`. When `true`, keep profile score
+  thresholds as preferences: select above-threshold stories first, then fill
+  vacant category slots with the highest-scoring below-threshold stories.
+  Only groups with finite limits can draw from reserves; the final `max_items`
+  cap still applies. Failed or missing analyses never enter the reserve pool.
 - `profile_order`: Optional final-summary section priority. When non-empty,
   loaded profiles not listed here are appended in profile discovery order.
   When empty or omitted, sections follow their first appearance in the selected
@@ -642,6 +647,15 @@ digest limits:
 Balanced digest filtering runs after configured profile filtering and topic
 deduplication, but before enrichment. This reduces enrichment calls to only the
 items that can appear in the final digest.
+
+Reserve filling uses the existing analysis scores and does not rescore stories.
+Topic deduplication considers reserves only when needed, in batches sized to the
+open slots, and checks them against already eligible stories in the same profile.
+If duplicates are removed, the next ranked reserves are tried. Only final
+selections receive enrichment. Categories remain short when there are too few
+unique stories. Initial scoring still runs on the collected candidates; reserve
+filling does not reduce that cost. Source collection limits and engagement
+filters remain independent of this setting.
 
 Group matching uses the source category stored in `ContentItem.metadata.category`.
 All source types support a `category` field: `sources.rss[].category`,

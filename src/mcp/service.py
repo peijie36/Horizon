@@ -420,6 +420,7 @@ class HorizonPipelineService:
             run_id,
             {
                 "filtered_count": len(important_items),
+                "reserve_count": filtering_result.reserve_count,
                 "filter_threshold_override": threshold,
                 "topic_dedup_enabled": topic_dedup,
                 "topic_dedup_removed": filtering_result.topic_dedup_removed,
@@ -437,6 +438,7 @@ class HorizonPipelineService:
         return {
             "run_id": run_id,
             "kept": len(important_items),
+            "reserve_count": filtering_result.reserve_count,
             "threshold_override": threshold,
             "removed_by_topic_dedup": filtering_result.topic_dedup_removed,
             "removed_after_reanalysis": (
